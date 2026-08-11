@@ -1,0 +1,175 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import type { ClientProfile } from "@/lib/types";
+import { TONES } from "@/lib/types";
+
+export default function Home() {
+  const [clients, setClients] = useState<ClientProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+
+  async function load() {
+    const res = await fetch("/api/clients");
+    const data = await res.json();
+    setClients(data.clients ?? []);
+    setLoading(false);
+  }
+  useEffect(() => {
+    load();
+  }, []);
+
+  return (
+    <div>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <h1 style={{ margin: 0 }}>Clients</h1>
+        <button onClick={() => setShowForm((s) => !s)}>
+          {showForm ? "Cancel" : "+ New client"}
+        </button>
+      </div>
+      <p className="muted small">
+        Each client has a reusable profile. Enter their info once, then generate pages and add
+        more anytime without re-typing anything.
+      </p>
+
+      {showForm && <NewClientForm onCreated={() => { setShowForm(false); load(); }} />}
+
+      {loading ? (
+        <p className="muted">Loading...</p>
+      ) : clients.length === 0 ? (
+        <div className="panel muted">No clients yet. Create one to get started.</div>
+      ) : (
+        clients.map((c) => (
+          <a key={c.id} href={`/clients/${c.id}`} style={{ display: "block" }}>
+            <div className="clientcard">
+              <div>
+                <div style={{ fontWeight: 600, color: "var(--text)" }}>{c.name}</div>
+                <div className="muted small">
+                  {c.industry || "—"} · {c.services.length} services · {c.cities.length} cities
+                </div>
+              </div>
+              <span className="muted">→</span>
+            </div>
+          </a>
+        ))
+      )}
+    </div>
+  );
+}
+
+function NewClientForm({ onCreated }: { onCreated: () => void }) {
+  const [f, setF] = useState({
+    name: "",
+    website: "",
+    phone: "",
+    industry: "",
+    description: "",
+    tone: "professional",
+    services: "",
+    cities: "",
+    keywords: "",
+    serviceAreas: "",
+    urlPattern: "/services/{service}/{city}/",
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState("");
+
+  function set(k: string, v: string) {
+    setF((prev) => ({ ...prev, [k]: v }));
+  }
+
+  async function submit() {
+    if (!f.name.trim()) return setErr("Business name is required.");
+    setSaving(true);
+    setErr("");
+    const res = await fetch("/api/clients", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...f,
+        services: splitLines(f.services),
+        cities: splitLines(f.cities),
+        keywords: splitLines(f.keywords),
+        serviceAreas: splitLines(f.serviceAreas),
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) return setErr("Failed to create client.");
+    onCreated();
+  }
+
+  return (
+    <div className="panel">
+      <h2 style={{ marginTop: 0 }}>New client profile</h2>
+      <div className="grid2">
+        <div>
+          <label>Business name *</label>
+          <input value={f.name} onChange={(e) => set("name", e.target.value)} />
+        </div>
+        <div>
+          <label>Website</label>
+          <input value={f.website} onChange={(e) => set("website", e.target.value)} placeholder="https://..." />
+        </div>
+        <div>
+          <label>Phone</label>
+          <input value={f.phone} onChange={(e) => set("phone", e.target.value)} />
+        </div>
+        <div>
+          <label>Industry</label>
+          <input value={f.industry} onChange={(e) => set("industry", e.target.value)} placeholder="Roofing" />
+        </div>
+      </div>
+      <label>About the business (differentiators, credentials, what makes them good)</label>
+      <textarea value={f.description} onChange={(e) => set("description", e.target.value)} />
+
+      <div className="grid2">
+        <div>
+          <label>Tone</label>
+          <select value={f.tone} onChange={(e) => set("tone", e.target.value)}>
+            {TONES.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>URL pattern</label>
+          <input value={f.urlPattern} onChange={(e) => set("urlPattern", e.target.value)} />
+        </div>
+      </div>
+
+      <div className="grid2">
+        <div>
+          <label>Services (one per line)</label>
+          <textarea value={f.services} onChange={(e) => set("services", e.target.value)} placeholder={"Roof Repair\nRoof Replacement\nStorm Damage"} />
+        </div>
+        <div>
+          <label>Target cities (one per line)</label>
+          <textarea value={f.cities} onChange={(e) => set("cities", e.target.value)} placeholder={"Austin\nRound Rock\nCedar Park"} />
+        </div>
+        <div>
+          <label>Priority keywords (one per line)</label>
+          <textarea value={f.keywords} onChange={(e) => set("keywords", e.target.value)} />
+        </div>
+        <div>
+          <label>Service areas / neighborhoods (one per line)</label>
+          <textarea value={f.serviceAreas} onChange={(e) => set("serviceAreas", e.target.value)} />
+        </div>
+      </div>
+
+      {err && <div className="err">{err}</div>}
+      <div className="spacer" />
+      <button onClick={submit} disabled={saving}>
+        {saving ? "Saving..." : "Create client"}
+      </button>
+    </div>
+  );
+}
+
+function splitLines(s: string): string[] {
+  return s
+    .split(/[\n,]/)
+    .map((x) => x.trim())
+    .filter(Boolean);
+}
