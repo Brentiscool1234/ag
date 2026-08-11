@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientProfile, Job, Page, Suggestion } from "@/lib/types";
 import { TONES } from "@/lib/types";
+import { getActiveAccountId } from "@/lib/activeAccount";
 
 export default function ClientPage({ params }: { params: { id: string } }) {
   const id = params.id;
@@ -48,10 +49,15 @@ export default function ClientPage({ params }: { params: { id: string } }) {
   async function generate() {
     const targets = suggestions.filter((s) => selected.has(keyOf(s)));
     if (targets.length === 0) return;
+    const accountId = getActiveAccountId();
+    if (!accountId) {
+      alert("Pick or create an account (top right) and add your API key first.");
+      return;
+    }
     const res = await fetch("/api/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ clientId: id, targets }),
+      body: JSON.stringify({ clientId: id, accountId, targets }),
     });
     const data = await res.json();
     if (!res.ok) {

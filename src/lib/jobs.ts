@@ -1,6 +1,6 @@
 import { randomUUID } from "crypto";
 import type { ClientProfile, Job, Suggestion } from "./types";
-import { getClient, listPages, saveJob, savePage } from "./db";
+import { getAccount, getClient, listPages, saveJob, savePage } from "./db";
 import { generatePage, type GenerateContext } from "./engine";
 
 // In-process background job runner. Good for a single persistent Node server
@@ -15,11 +15,13 @@ let secondsPerPageEstimate = 45;
 
 export function startGenerationJob(
   clientId: string,
+  accountId: string,
   targets: Suggestion[],
 ): Job {
   const job: Job = {
     id: randomUUID(),
     clientId,
+    accountId,
     status: "queued",
     total: targets.length,
     completed: 0,
@@ -52,6 +54,12 @@ async function runJob(jobId: string, targets: Suggestion[]): Promise<void> {
     return;
   }
 
+  const account = getAccount(jobRow.accountId);
+  if (!account) {
+    saveJob({ ...jobRow, status: "error", error: "Account not found", finishedAt: Date.now() });
+    return;
+  }
+
   let job: Job = { ...jobRow, status: "running", startedAt: Date.now() };
   saveJob(job);
 
@@ -75,7 +83,7 @@ async function runJob(jobId: string, targets: Suggestion[]): Promise<void> {
 
     const started = Date.now();
     try {
-      const page = await generatePage(profile as ClientProfile, t.service, t.city, ctx);
+      const page = await generatePage(account, profile as ClientProfile, t.service, t.city, ctx);
       savePage(page);
       // Add to sibling context so the next page is checked against this one.
       ctx.siblingOpenings.push(page.openingFingerprint);

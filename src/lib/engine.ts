@@ -1,5 +1,5 @@
-import type { ClientProfile, Page } from "./types";
-import { generateRawPage } from "./anthropic";
+import type { Account, ClientProfile, Page } from "./types";
+import { generateRawPage } from "./providers";
 import { OPENING_ARCHETYPES } from "./prompt";
 import { buildInternalLinks, predictUrl } from "./links";
 import { buildSchemaJsonLd } from "./schema";
@@ -24,6 +24,7 @@ export interface GenerateContext {
 // Generate one page for a service/city, running the full validate->regenerate
 // loop. Returns a Page whether it ultimately passed or exhausted attempts.
 export async function generatePage(
+  account: Account,
   profile: ClientProfile,
   service: string,
   city: string,
@@ -40,7 +41,7 @@ export async function generatePage(
     // Rotate the opening archetype each attempt so a regen genuinely differs.
     const archetype = OPENING_ARCHETYPES[(attempt - 1) % OPENING_ARCHETYPES.length];
 
-    const raw = await generateRawPage({
+    const raw = await generateRawPage(account, {
       profile,
       service,
       city,

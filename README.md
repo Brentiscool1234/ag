@@ -32,6 +32,11 @@ Deterministic gates are unit-tested — run `npm test`.
 
 ## Core features
 
+- **Bring your own key, per account** — each account picks its provider
+  (**Claude** or **OpenAI**), stores its own API key + model on its profile
+  (top-right account picker → Account settings), and a "Save & test key" button
+  confirms it works before a batch. Keys are stored in the app DB and never
+  shown back in full. Generation runs on the active account's key.
 - **Clients with reusable profiles** — enter business info, tone, services,
   cities, keywords, banned words, and URL pattern **once**; every page reuses it.
 - **Page suggestions** — the app surfaces every service × city combo the client
@@ -65,11 +70,15 @@ rewrite.
 ## Running it
 
 ```bash
-cp .env.example .env      # add your ANTHROPIC_API_KEY
+cp .env.example .env      # optional: env keys are only fallbacks now
 npm install
 npm run build
 npm start                 # http://localhost:3000
 ```
+
+Then in the dashboard: create an account (top-right), open **Account settings**,
+pick Claude or OpenAI, paste your API key, and hit **Save & test key**. Now you
+can generate.
 
 Dev mode: `npm run dev`. Tests: `npm test`. Typecheck: `npm run typecheck`.
 
@@ -95,8 +104,11 @@ See `.env.example`. Key vars: `ANTHROPIC_API_KEY` (required), `SEO_MODEL`
 
 Current build is **v1: internal agency tool**. Deliberately deferred:
 
-1. **Auth** — there's an optional shared-password stopgap only. Add real auth
-   (Clerk / Supabase / Auth0 with orgs) before exposing it beyond your team.
+1. **Auth** — accounts exist and each holds its own key, but there's no login
+   yet (anyone with dashboard access can switch accounts). Add real auth
+   (Clerk / Supabase / Auth0) so a logged-in user maps to their account.
+   API keys are stored unencrypted in the DB — encrypt them at rest before
+   multi-tenant use.
 2. **Tenant + billing layer** — the Client model is already the workspace
    boundary; add an Agency/Account tenant above it and Stripe billing.
 3. **Postgres + Redis queue** — swap SQLite for Postgres and the in-process job

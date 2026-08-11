@@ -1,7 +1,7 @@
 import Database from "better-sqlite3";
 import { mkdirSync } from "fs";
 import { dirname } from "path";
-import type { ClientProfile, Job, Page } from "./types";
+import type { Account, ClientProfile, Job, Page } from "./types";
 
 // A single SQLite connection for the whole app. For higher concurrency or a
 // multi-server deployment, swap this file for Postgres (the store functions
@@ -43,7 +43,40 @@ function init(d: Database.Database) {
       createdAt INTEGER NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_jobs_client ON jobs(clientId);
+    CREATE TABLE IF NOT EXISTS accounts (
+      id TEXT PRIMARY KEY,
+      data TEXT NOT NULL,
+      updatedAt INTEGER NOT NULL
+    );
   `);
+}
+
+// ---- Accounts (each holds its own provider + API key) ----
+
+export function listAccounts(): Account[] {
+  const rows = getDb().prepare("SELECT data FROM accounts ORDER BY updatedAt DESC").all() as {
+    data: string;
+  }[];
+  return rows.map((r) => JSON.parse(r.data) as Account);
+}
+
+export function getAccount(id: string): Account | null {
+  const row = getDb().prepare("SELECT data FROM accounts WHERE id = ?").get(id) as
+    | { data: string }
+    | undefined;
+  return row ? (JSON.parse(row.data) as Account) : null;
+}
+
+export function saveAccount(a: Account): void {
+  getDb()
+    .prepare(
+      "INSERT INTO accounts (id, data, updatedAt) VALUES (?, ?, ?) ON CONFLICT(id) DO UPDATE SET data = excluded.data, updatedAt = excluded.updatedAt",
+    )
+    .run(a.id, JSON.stringify(a), a.updatedAt);
+}
+
+export function deleteAccount(id: string): void {
+  getDb().prepare("DELETE FROM accounts WHERE id = ?").run(id);
 }
 
 // ---- Clients ----

@@ -1,5 +1,25 @@
 // Shared domain types for the SEO page generator.
 
+export type Provider = "anthropic" | "openai";
+
+// An account = the person/team member who uses the dashboard. Each account
+// holds its OWN provider choice + API key, so everyone brings their own key.
+// (This is the profile real auth will attach to later: user -> account.)
+export interface Account {
+  id: string;
+  name: string;
+  provider: Provider;
+  anthropicApiKey: string;
+  openaiApiKey: string;
+  anthropicModel: string; // e.g. claude-opus-5
+  openaiModel: string; // e.g. gpt-4o
+  createdAt: number;
+  updatedAt: number;
+}
+
+export const DEFAULT_ANTHROPIC_MODEL = "claude-opus-5";
+export const DEFAULT_OPENAI_MODEL = "gpt-4o";
+
 export type Tone =
   | "professional"
   | "friendly"
@@ -68,6 +88,7 @@ export interface InternalLink {
 export interface Job {
   id: string;
   clientId: string;
+  accountId: string; // whose API key this job runs on
   status: "queued" | "running" | "done" | "error";
   total: number;
   completed: number;
