@@ -19,20 +19,38 @@ export function buildSchemaJsonLd(
 ): string {
   const pageUrl = joinUrl(profile.website, slug);
 
+  const address =
+    profile.state || profile.country
+      ? {
+          "@type": "PostalAddress",
+          addressRegion: profile.state || undefined,
+          addressCountry: profile.country || undefined,
+        }
+      : undefined;
+
+  const cityNode = (c: string) => {
+    const node: Record<string, unknown> = { "@type": "City", name: c };
+    if (profile.state) {
+      node.containedInPlace = { "@type": "State", name: profile.state };
+    }
+    return node;
+  };
+
   const localBusiness = {
     "@type": "LocalBusiness",
     name: profile.name,
     url: profile.website,
     telephone: profile.phone || undefined,
-    areaServed: profile.cities.map((c) => ({ "@type": "City", name: c })),
+    address,
+    areaServed: profile.cities.map(cityNode),
   };
 
   const serviceNode = {
     "@type": "Service",
     serviceType: service,
-    name: `${service} in ${city}`,
+    name: profile.state ? `${service} in ${city}, ${profile.state}` : `${service} in ${city}`,
     url: pageUrl,
-    areaServed: { "@type": "City", name: city },
+    areaServed: cityNode(city),
     provider: localBusiness,
   };
 

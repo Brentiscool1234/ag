@@ -34,11 +34,14 @@ export function buildInternalLinks(
   city: string,
 ): InternalLink[] {
   const links: InternalLink[] = [];
+  // Internal links point to the full absolute URL (website + path), so they
+  // work as real live links wherever the page is published.
+  const abs = (path: string) => joinUrl(profile.website, path);
 
   // 1. Up to the service hub.
   links.push({
     anchor: `${service} services`,
-    href: predictServiceHub(profile.urlPattern, service),
+    href: abs(predictServiceHub(profile.urlPattern, service)),
     reason: "service hub",
   });
 
@@ -47,7 +50,7 @@ export function buildInternalLinks(
   for (const other of otherCities) {
     links.push({
       anchor: `${service} in ${other}`,
-      href: predictUrl(profile.urlPattern, service, other),
+      href: abs(predictUrl(profile.urlPattern, service, other)),
       reason: "sibling city",
     });
   }
@@ -57,7 +60,7 @@ export function buildInternalLinks(
   for (const other of otherServices) {
     links.push({
       anchor: `${other} in ${city}`,
-      href: predictUrl(profile.urlPattern, other, city),
+      href: abs(predictUrl(profile.urlPattern, other, city)),
       reason: "related service",
     });
   }

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { ClientProfile } from "@/lib/types";
 import { TONES } from "@/lib/types";
+import { COUNTRIES, LANGUAGES, regionConfig } from "@/lib/regions";
 
 export default function Home() {
   const [clients, setClients] = useState<ClientProfile[]>([]);
@@ -65,6 +66,9 @@ function NewClientForm({ onCreated }: { onCreated: () => void }) {
     industry: "",
     description: "",
     tone: "professional",
+    country: "United States",
+    language: "English",
+    state: "",
     services: "",
     cities: "",
     keywords: "",
@@ -121,6 +125,45 @@ function NewClientForm({ onCreated }: { onCreated: () => void }) {
       </div>
       <label>About the business (differentiators, credentials, what makes them good)</label>
       <textarea value={f.description} onChange={(e) => set("description", e.target.value)} />
+
+      <div className="grid2">
+        <div>
+          <label>Country</label>
+          <select
+            value={f.country}
+            onChange={(e) => {
+              set("country", e.target.value);
+              set("state", ""); // reset state when country changes
+            }}
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>Language</label>
+          <select value={f.language} onChange={(e) => set("language", e.target.value)}>
+            {LANGUAGES.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* State only appears once a country + language are chosen, and only for
+          countries that use states/provinces. */}
+      {f.country && f.language && regionConfig(f.country) && (
+        <div>
+          <label>{regionConfig(f.country)!.label}</label>
+          <select value={f.state} onChange={(e) => set("state", e.target.value)}>
+            <option value="">Select {regionConfig(f.country)!.label.toLowerCase()}…</option>
+            {regionConfig(f.country)!.options.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="grid2">
         <div>

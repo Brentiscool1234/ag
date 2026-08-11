@@ -41,7 +41,7 @@ async function anthropicGenerate(account: Account, params: GenParams): Promise<R
   // this SDK version; the body is valid and forwarded as-is at runtime.
   const requestParams = {
     model,
-    max_tokens: 8000,
+    max_tokens: 12000, // headroom for a full 1,700-2,200 word page + HTML
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
     system: SYSTEM_PROMPT,
@@ -62,7 +62,7 @@ async function openaiGenerate(account: Account, params: GenParams): Promise<RawP
 
   const completion = await client.chat.completions.create({
     model,
-    max_tokens: 4000,
+    max_tokens: 8000, // headroom for a full 1,700-2,200 word page + HTML
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },

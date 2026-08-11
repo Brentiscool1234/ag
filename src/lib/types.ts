@@ -44,6 +44,9 @@ export interface ClientProfile {
   phone: string;
   industry: string; // e.g. "Roofing"
   description: string; // What the business does, differentiators, credentials.
+  country: string; // e.g. "United States"
+  language: string; // page language, e.g. "English"
+  state: string; // state/province, only for countries that use them (e.g. "Texas")
   tone: Tone;
   services: string[]; // e.g. ["Roof Repair", "Roof Replacement", "Storm Damage"]
   cities: string[]; // target cities, e.g. ["Austin", "Round Rock"]

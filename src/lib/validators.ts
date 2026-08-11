@@ -197,9 +197,11 @@ function jaccard<T>(a: Set<T>, b: Set<T>): number {
 // ---------------------------------------------------------------------------
 
 export const GATES = {
-  minWords: 1200,
-  maxWords: 2000,
-  minReadingEase: 55, // a touch of headroom below the 60 ideal
+  minWords: 1400, // hard floor; the prompt targets 1,700-2,200
+  targetWords: 1700,
+  maxWords: 2600, // only a soft warning above this
+  minReadingEase: 45, // relaxed hard floor (~10th grade); prompt still pushes 60+
+  idealReadingEase: 55,
   maxOpeningSimilarity: 0.6,
   maxContentSimilarity: 0.4,
 };
@@ -218,6 +220,7 @@ export function evaluatePage(
     bannedWordsExtra?: string[];
     siblingOpenings?: string[]; // openingFingerprints of existing sibling pages
     siblingBodies?: string[]; // html/text of existing sibling pages
+    skipReadability?: boolean; // true for non-English pages (Flesch is English-only)
   } = {},
 ): GateResult {
   const text = stripHtml(html);
@@ -226,23 +229,27 @@ export function evaluatePage(
 
   const wordCount = words(text).length;
   if (wordCount < GATES.minWords)
-    hardFailures.push(`Only ${wordCount} words (min ${GATES.minWords}).`);
+    hardFailures.push(
+      `Page is only ${wordCount} words. The HARD MINIMUM is ${GATES.minWords} words and the target is ${GATES.targetWords}-2,200. You must substantially expand EVERY section with more specific, useful detail and add more FAQ entries.`,
+    );
   if (wordCount > GATES.maxWords)
     warnings.push(`${wordCount} words (over ${GATES.maxWords}); consider trimming.`);
 
-  if (hasEmDash(html)) warnings.push("Em dash found — auto-sanitized.");
+  if (hasEmDash(html)) warnings.push("Em dash found; auto-sanitized.");
 
   const banned = findBannedWords(text, opts.bannedWordsExtra ?? []);
   if (banned.length > 0) {
     const uniq = Array.from(new Set(banned.map((b) => b.phrase)));
-    hardFailures.push(`Banned AI-tell words: ${uniq.join(", ")}.`);
+    hardFailures.push(`Remove these AI-tell words entirely: ${uniq.join(", ")}.`);
   }
 
   const reading = readability(text);
-  if (reading.fleschReadingEase < GATES.minReadingEase)
+  if (!opts.skipReadability && reading.fleschReadingEase < GATES.minReadingEase)
     hardFailures.push(
-      `Reading ease ${reading.fleschReadingEase} (min ${GATES.minReadingEase}) — too dense.`,
+      `Reading ease ${reading.fleschReadingEase} (min ${GATES.minReadingEase}); use shorter sentences and simpler words.`,
     );
+  else if (!opts.skipReadability && reading.fleschReadingEase < GATES.idealReadingEase)
+    warnings.push(`Reading ease ${reading.fleschReadingEase} (ideal ${GATES.idealReadingEase}+).`);
 
   const myOpening = openingFingerprint(html);
   for (const sib of opts.siblingOpenings ?? []) {

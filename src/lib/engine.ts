@@ -57,10 +57,12 @@ export async function generatePage(
     raw.title = sanitizeEmDashes(raw.title);
     raw.metaDescription = sanitizeEmDashes(raw.metaDescription);
 
+    const english = (profile.language || "English").toLowerCase().startsWith("en");
     const result = evaluatePage(raw.html, {
       bannedWordsExtra: profile.bannedWordsExtra,
       siblingOpenings: ctx.siblingOpenings,
       siblingBodies: ctx.siblingBodies,
+      skipReadability: !english,
     });
 
     if (result.ok) {

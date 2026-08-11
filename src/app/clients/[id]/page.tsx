@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ClientProfile, Job, Page, Suggestion } from "@/lib/types";
 import { TONES } from "@/lib/types";
+import { COUNTRIES, LANGUAGES, regionConfig } from "@/lib/regions";
 import { getActiveAccountId } from "@/lib/activeAccount";
 
 export default function ClientPage({ params }: { params: { id: string } }) {
@@ -244,6 +245,9 @@ function EditProfile({ client, onSaved }: { client: ClientProfile; onSaved: () =
     industry: client.industry,
     description: client.description,
     tone: client.tone,
+    country: client.country || "United States",
+    language: client.language || "English",
+    state: client.state || "",
     urlPattern: client.urlPattern,
     services: client.services.join("\n"),
     cities: client.cities.join("\n"),
@@ -296,6 +300,41 @@ function EditProfile({ client, onSaved }: { client: ClientProfile; onSaved: () =
       </div>
       <label>About</label>
       <textarea value={f.description} onChange={(e) => set("description", e.target.value)} />
+      <div className="grid2">
+        <div>
+          <label>Country</label>
+          <select
+            value={f.country}
+            onChange={(e) => {
+              set("country", e.target.value);
+              set("state", "");
+            }}
+          >
+            {COUNTRIES.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>Language</label>
+          <select value={f.language} onChange={(e) => set("language", e.target.value)}>
+            {LANGUAGES.map((l) => (
+              <option key={l} value={l}>{l}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {f.country && f.language && regionConfig(f.country) && (
+        <div>
+          <label>{regionConfig(f.country)!.label}</label>
+          <select value={f.state} onChange={(e) => set("state", e.target.value)}>
+            <option value="">Select {regionConfig(f.country)!.label.toLowerCase()}…</option>
+            {regionConfig(f.country)!.options.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+        </div>
+      )}
       <div className="grid2">
         <div>
           <label>Tone</label>
