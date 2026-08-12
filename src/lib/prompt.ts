@@ -40,6 +40,29 @@ function bulletList(items: string[]): string {
   return items.map((i) => `  - ${i}`).join("\n");
 }
 
+// Delimited output format (NOT JSON). Asking the model to emit a big HTML blob
+// as an escaped JSON string makes terse models (gpt-4o) truncate and under-write.
+// A plain delimited format lets it write the page naturally and is robust to parse.
+function outputFormatBlock(service: string, city: string, stateAbbrev: string): string {
+  const titleEx = `${service} ${city}${stateAbbrev ? ", " + stateAbbrev : ""} | <short outcome>`;
+  return `Return the page in EXACTLY this delimited format and NOTHING else (no JSON, no code fences, no commentary before or after):
+===TITLE===
+<SEO title under 60 chars, e.g. "${titleEx}">
+===META===
+<meta description, 140-160 chars, includes ${city}>
+===H1===
+<H1 leading with ${service} and ${city}, then the outcome>
+===BODY===
+<the FULL page body as clean semantic HTML using <h2>,<h3>,<p>,<ul>,<li>,<a>. Do NOT include <html>, <head>, <body>, the H1 heading, or any schema. Write the complete page here.>
+===FAQ===
+Q: <question 1>
+A: <answer 1>
+Q: <question 2>
+A: <answer 2>
+(include 6 to 8 Q/A pairs)
+===END===`;
+}
+
 export function buildUserPrompt(p: GenParams): string {
   const { profile, service, city } = p;
   const loc = locationLabel(city, profile.state);
@@ -151,14 +174,7 @@ INTERNAL LINKS: weave these in naturally as HTML anchors where they fit (use the
 full URLs exactly as given, do not dump them in a list):
 ${linkList}
 ${feedbackBlock}
-Return ONLY a JSON object (no markdown, no code fences) with exactly these fields:
-{
-  "title": "SEO title, under 60 chars, lead with ${service} + ${city}, then a short outcome. Example style: '${service} ${city}${profile.state ? ", " + abbrev(profile.state) : ""} | <short outcome>'",
-  "metaDescription": "meta description, 140-160 chars, compelling, includes ${city}",
-  "h1": "H1 that leads with the service and location, then the outcome. Example style: '${service} ${city}${profile.state ? ", " + abbrev(profile.state) : ""} | <short benefit>'",
-  "html": "the full page body as clean semantic HTML using <h2>,<h3>,<p>,<ul>,<li>,<a>. Do NOT include <html>,<head>,<body>, the H1, or the schema.",
-  "faqs": [{"question": "...", "answer": "..."}]
-}`;
+${outputFormatBlock(service, city, profile.state ? abbrev(profile.state) : "")}`;
 }
 
 // Expansion pass: feed the current (too-short) draft back and ask the model to
@@ -193,8 +209,7 @@ ${fixBlock}
 CURRENT DRAFT (title: ${current.title}):
 ${current.html}
 
-Return ONLY a JSON object with the same fields as before:
-{"title": "...", "metaDescription": "...", "h1": "...", "html": "the full EXPANDED body, 1,200+ words", "faqs": [{"question":"...","answer":"..."}]}`;
+${outputFormatBlock(p.service, p.city, p.profile.state ? abbrev(p.profile.state) : "")}`;
 }
 
 // Rough US/CA/AU state abbreviation for titles ("Texas" -> "TX"). Falls back to

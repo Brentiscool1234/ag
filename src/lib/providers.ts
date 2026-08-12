@@ -70,24 +70,25 @@ async function anthropicRun(account: Account, userPrompt: string): Promise<RawPa
   for (const block of message.content) {
     if (block.type === "text") text += block.text;
   }
-  return parseRawPage(text);
+  return parsePage(text);
 }
 
 async function openaiRun(account: Account, userPrompt: string): Promise<RawPage> {
   const client = new OpenAI({ apiKey: openaiKey(account) });
   const model = account.openaiModel || DEFAULT_OPENAI_MODEL;
 
+  // No response_format: JSON mode makes gpt-4o terse and truncate the HTML.
+  // We use a delimited plain-text format instead (parsed by parsePage).
   const completion = await client.chat.completions.create({
     model,
     max_tokens: 8000,
-    response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
       { role: "user", content: userPrompt },
     ],
   });
   const text = completion.choices[0]?.message?.content ?? "";
-  return parseRawPage(text);
+  return parsePage(text);
 }
 
 // A cheap round-trip so the dashboard's "Test" button confirms the key works
@@ -113,7 +114,56 @@ export async function testAccount(account: Account): Promise<{ ok: true; model: 
   return { ok: true, model };
 }
 
-// The prompt asks for raw JSON, but models occasionally wrap it. Parse defensively.
+// Primary parser for the delimited output format. Falls back to JSON parsing
+// if a model ignores the format and returns JSON anyway.
+export function parsePage(text: string): RawPage {
+  const t = text.replace(/\r\n/g, "\n");
+  if (/===\s*BODY\s*===/i.test(t)) {
+    const section = (name: string): string => {
+      const re = new RegExp(
+        `===\\s*${name}\\s*===\\s*\\n([\\s\\S]*?)(?=\\n===\\s*[A-Z0-9]+\\s*===|$)`,
+        "i",
+      );
+      const m = t.match(re);
+      return m ? m[1].trim() : "";
+    };
+    const firstLine = (s: string) => s.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+    const title = firstLine(section("TITLE"));
+    const html = section("BODY");
+    if (title && html) {
+      return {
+        title,
+        metaDescription: firstLine(section("META")),
+        h1: firstLine(section("H1")) || title,
+        html,
+        faqs: parseFaqBlock(section("FAQ")),
+      };
+    }
+  }
+  return parseRawPage(text);
+}
+
+function parseFaqBlock(raw: string): { question: string; answer: string }[] {
+  const faqs: { question: string; answer: string }[] = [];
+  let cur: { question: string; answer: string } | null = null;
+  for (const line of raw.split("\n")) {
+    const q = line.match(/^\s*Q[:.)]\s*(.*)/i);
+    const a = line.match(/^\s*A[:.)]\s*(.*)/i);
+    if (q) {
+      if (cur) faqs.push(cur);
+      cur = { question: q[1].trim(), answer: "" };
+    } else if (a && cur) {
+      cur.answer = (cur.answer ? cur.answer + " " : "") + a[1].trim();
+    } else if (cur && line.trim()) {
+      // continuation line of the current answer
+      cur.answer = (cur.answer ? cur.answer + " " : "") + line.trim();
+    }
+  }
+  if (cur) faqs.push(cur);
+  return faqs.filter((f) => f.question && f.answer);
+}
+
+// Fallback parser for models that return JSON despite the delimited instruction.
 export function parseRawPage(text: string): RawPage {
   let s = text.trim();
   const fence = s.match(/```(?:json)?\s*([\s\S]*?)```/);
