@@ -256,10 +256,17 @@ function EditProfile({ client, onSaved }: { client: ClientProfile; onSaved: () =
     keywords: client.keywords.join("\n"),
     serviceAreas: client.serviceAreas.join("\n"),
     bannedWordsExtra: client.bannedWordsExtra.join("\n"),
+    servesRemotely: client.servesRemotely ?? true,
+    pricingInfo: client.pricingInfo ?? "",
+    guarantee: client.guarantee ?? "",
+    deliverables: (client.deliverables ?? []).join("\n"),
+    differentiators: (client.differentiators ?? []).join("\n"),
+    industries: (client.industries ?? []).join("\n"),
+    proofPoints: (client.proofPoints ?? []).join("\n"),
   });
   const [saving, setSaving] = useState(false);
 
-  function set(k: string, v: string) {
+  function set(k: string, v: string | boolean) {
     setF((p) => ({ ...p, [k]: v }));
   }
   async function save() {
@@ -274,6 +281,10 @@ function EditProfile({ client, onSaved }: { client: ClientProfile; onSaved: () =
         keywords: split(f.keywords),
         serviceAreas: split(f.serviceAreas),
         bannedWordsExtra: split(f.bannedWordsExtra),
+        deliverables: split(f.deliverables),
+        differentiators: split(f.differentiators),
+        industries: split(f.industries),
+        proofPoints: split(f.proofPoints),
       }),
     });
     setSaving(false);
@@ -367,6 +378,45 @@ function EditProfile({ client, onSaved }: { client: ClientProfile; onSaved: () =
           <textarea value={f.serviceAreas} onChange={(e) => set("serviceAreas", e.target.value)} />
         </div>
       </div>
+      <h3 style={{ marginTop: 18 }}>Positioning & proof</h3>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        Makes each city page unique and trustworthy. Blank fields are left out — nothing is invented.
+      </p>
+      <label className="checkline">
+        <input
+          type="checkbox"
+          checked={f.servesRemotely}
+          onChange={(e) => set("servesRemotely", e.target.checked)}
+        />
+        <span>Serves target cities remotely (no physical office in each city)</span>
+      </label>
+      <div className="grid2">
+        <div>
+          <label>Pricing (optional)</label>
+          <input value={f.pricingInfo} onChange={(e) => set("pricingInfo", e.target.value)} placeholder='e.g. "Starting at $2,500"' />
+        </div>
+        <div>
+          <label>Guarantee (optional)</label>
+          <input value={f.guarantee} onChange={(e) => set("guarantee", e.target.value)} placeholder='e.g. "5X ROI in 12 months or money back"' />
+        </div>
+        <div>
+          <label>What every project includes (one per line)</label>
+          <textarea value={f.deliverables} onChange={(e) => set("deliverables", e.target.value)} />
+        </div>
+        <div>
+          <label>Real differentiators (one per line)</label>
+          <textarea value={f.differentiators} onChange={(e) => set("differentiators", e.target.value)} />
+        </div>
+        <div>
+          <label>Industries served (one per line)</label>
+          <textarea value={f.industries} onChange={(e) => set("industries", e.target.value)} />
+        </div>
+        <div>
+          <label>Proof points — real results / testimonials (one per line)</label>
+          <textarea value={f.proofPoints} onChange={(e) => set("proofPoints", e.target.value)} placeholder="Blank = a team placeholder is inserted instead of fake proof." />
+        </div>
+      </div>
+
       <label>Extra banned words for this client (one per line)</label>
       <textarea value={f.bannedWordsExtra} onChange={(e) => set("bannedWordsExtra", e.target.value)} />
       <div className="spacer" />

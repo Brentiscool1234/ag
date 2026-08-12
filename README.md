@@ -37,8 +37,19 @@ Deterministic gates are unit-tested — run `npm test`.
   (top-right account picker → Account settings), and a "Save & test key" button
   confirms it works before a batch. Keys are stored in the app DB and never
   shown back in full. Generation runs on the active account's key.
+- **Positioning & proof, not filler** — the page is built for a buyer choosing
+  who to hire: outcome-focused H1, concrete deliverables, a proof/results
+  section, pricing, an explained guarantee, real surrounding areas, and
+  purchase-intent FAQs. It **never fabricates** a physical location, testimonials,
+  or result numbers — provided data is used; missing data is omitted or left as a
+  clearly-marked "team: add real proof here" placeholder. City-culture fluff
+  ("nestled in the heart of…", weather, tourism copy) is banned outright, since
+  that's the classic AI/doorway giveaway. Quality over length: pages are as long
+  as the content warrants, not padded to a number.
 - **Clients with reusable profiles** — enter business info, tone, services,
-  cities, keywords, banned words, and URL pattern **once**; every page reuses it.
+  cities, keywords, banned words, positioning (pricing, guarantee, deliverables,
+  differentiators, industries, proof points), and URL pattern **once**; every
+  page reuses it.
 - **Page suggestions** — the app surfaces every service × city combo the client
   doesn't have yet, so you never re-type the same info to add more pages.
 - **Set it and leave it** — batch generation runs as a background job on the

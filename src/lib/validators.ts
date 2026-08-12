@@ -72,6 +72,11 @@ export const GLOBAL_BANNED_WORDS: string[] = [
   "unparalleled", "unrivaled", "ever-evolving", "fast-paced world",
   "moreover", "furthermore", "in conclusion", "it's worth noting",
   "needless to say", "first and foremost",
+  // Fake "local flavor" fluff — the biggest AI/doorway giveaway on city pages.
+  "in the heart of", "heart of", "rich blend", "rich tapestry", "vibrant",
+  "thriving", "hot summers", "mild winters", "proud to call",
+  "unique blend", "hustle and bustle", "melting pot", "diverse community",
+  "picturesque", "charming", "steeped in", "rich history",
 ];
 
 export interface BannedHit {
@@ -197,13 +202,15 @@ function jaccard<T>(a: Set<T>, b: Set<T>): number {
 // ---------------------------------------------------------------------------
 
 export const GATES = {
-  minWords: 1400, // hard floor; the prompt targets 1,700-2,200
-  targetWords: 1700,
-  maxWords: 2600, // only a soft warning above this
+  // Quality over length. Floor just guards against genuinely thin pages; the
+  // prompt is told to write as long as the content warrants and NOT to pad.
+  minWords: 900,
+  targetWords: 1200,
+  maxWords: 2200, // only a soft warning above this
   minReadingEase: 45, // relaxed hard floor (~10th grade); prompt still pushes 60+
   idealReadingEase: 55,
   maxOpeningSimilarity: 0.6,
-  maxContentSimilarity: 0.4,
+  maxContentSimilarity: 0.4, // the real anti-doorway guard: bodies must differ
 };
 
 export interface GateResult {
@@ -230,7 +237,7 @@ export function evaluatePage(
   const wordCount = words(text).length;
   if (wordCount < GATES.minWords)
     hardFailures.push(
-      `Page is only ${wordCount} words. The HARD MINIMUM is ${GATES.minWords} words and the target is ${GATES.targetWords}-2,200. You must substantially expand EVERY section with more specific, useful detail and add more FAQ entries.`,
+      `Page reads thin at ${wordCount} words. Add genuinely useful specifics (concrete deliverables, real process detail, purchase-intent FAQs) to reach roughly ${GATES.targetWords}. Do NOT pad with filler or city-culture fluff.`,
     );
   if (wordCount > GATES.maxWords)
     warnings.push(`${wordCount} words (over ${GATES.maxWords}); consider trimming.`);

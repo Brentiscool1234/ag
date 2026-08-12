@@ -32,6 +32,13 @@ export async function POST(req: NextRequest) {
     serviceAreas: clean(body.serviceAreas),
     bannedWordsExtra: clean(body.bannedWordsExtra),
     urlPattern: body.urlPattern || "/services/{service}/{city}/",
+    servesRemotely: body.servesRemotely !== false,
+    pricingInfo: body.pricingInfo ?? "",
+    guarantee: body.guarantee ?? "",
+    deliverables: clean(body.deliverables),
+    differentiators: clean(body.differentiators),
+    industries: clean(body.industries),
+    proofPoints: clean(body.proofPoints),
     createdAt: now,
     updatedAt: now,
   };

@@ -12,12 +12,12 @@ const TONE_GUIDE: Record<Tone, string> = {
 // Opening archetypes are rotated across sibling pages so pages have genuinely
 // different first impressions by design, not by luck.
 export const OPENING_ARCHETYPES = [
-  "Open with a specific local scenario a customer in this exact city would recognize.",
+  "Open with the reader's business problem this service solves (leads, calls, customers).",
   "Open with a direct, plain answer to what the reader is trying to accomplish.",
-  "Open with a concrete local detail (climate, common local issue, local conditions).",
-  "Open with a short, honest question the reader is actually asking themselves.",
-  "Open with a specific, believable fact relevant to this service in this area.",
-  "Open with a seasonal or timing angle relevant to this service in this city.",
+  "Open with a concrete competitive angle: what the reader loses by not fixing this.",
+  "Open with a short, honest question a buyer in this city is actually asking.",
+  "Open with a specific, believable outcome this service produces.",
+  "Open with a timing or urgency angle relevant to this service.",
 ];
 
 export interface GenParams {
@@ -30,11 +30,14 @@ export interface GenParams {
   siblingOpenings?: string[];
 }
 
-export const SYSTEM_PROMPT = `You are a senior local-SEO copywriter who writes long, detailed service-area pages that rank on Google and read like a real person wrote them for a real local business. You write clear, concrete, genuinely useful copy that would never be flagged as thin or doorway content. You are ruthless about avoiding generic AI filler, and you always write the full requested length. You never stop early or leave a section thin.`;
+export const SYSTEM_PROMPT = `You are a senior local-SEO conversion copywriter. You write service-area pages that (1) rank because they are genuinely useful and unique, and (2) convert because they are written for a buyer deciding who to hire, not for an algorithm. You never write generic "city culture" filler, never fabricate proof or a physical location, and never pad to hit a word count. Every sentence must help the reader decide to call this business. You follow Google's guidance: original, expert-led, non-commodity content, accurate real-world business information, and no doorway or scaled-content patterns.`;
 
-// Location label: "Austin, Texas" when a state is set, else just the city.
 function locationLabel(city: string, state: string): string {
   return state ? `${city}, ${state}` : city;
+}
+
+function bulletList(items: string[]): string {
+  return items.map((i) => `  - ${i}`).join("\n");
 }
 
 export function buildUserPrompt(p: GenParams): string {
@@ -59,63 +62,122 @@ export function buildUserPrompt(p: GenParams): string {
       ? `\nWRITE THE ENTIRE PAGE IN ${language.toUpperCase()}. Every heading, paragraph, FAQ, title, and meta description must be in ${language}.\n`
       : "";
 
-  return `Write a long, detailed service page for "${service}" targeting ${loc} (${profile.country || "United States"}).
+  // Location honesty: don't invent a physical presence.
+  const locationRule = profile.servesRemotely
+    ? `The business SERVES ${loc} but is NOT physically located there. NEVER say it is "based in", "located in", or "proud to call ${city} home". Frame it as "serving businesses throughout ${loc} and the surrounding area".`
+    : `The business has a real presence serving ${loc}. Still, do not invent a specific street address, and only state location facts you were given.`;
+
+  // Deliverables: use the client's real list if provided, else demand specifics.
+  const deliverablesRule = profile.deliverables.length
+    ? `Present these concrete deliverables as a clear list, each with one short line of explanation. Use exactly these (do not invent others):\n${bulletList(profile.deliverables)}`
+    : `List the concrete, tangible things included in this service (e.g. specific tools, setup steps, or outputs). Be specific to ${profile.industry || service}. Do NOT use vague buzzwords like "great UX", "responsive design", "seamless experience".`;
+
+  // Proof: use real proof if provided, otherwise insert a team placeholder.
+  const proofRule = profile.proofPoints.length
+    ? `Build a "Recent Work & Results" section from these REAL proof points (present them well, but do not exaggerate or add numbers that aren't here):\n${bulletList(profile.proofPoints)}`
+    : `You have NO real proof data for this client. Do NOT invent testimonials, client names, star ratings, awards, years in business, or result numbers. Instead, insert this exact placeholder block so the team fills it before publishing:\n<div class="proof-placeholder"><!-- TEAM: add 1-2 recent ${loc} projects (screenshots), a real client testimonial, and any real results/numbers here before publishing. --><p><em>[Recent ${loc} projects, results, and a client testimonial go here.]</em></p></div>`;
+
+  const differentiatorsRule = profile.differentiators.length
+    ? `Base the "Why choose ${profile.name}" section on these real differentiators:\n${bulletList(profile.differentiators)}`
+    : `Write "Why choose ${profile.name}" using only real, concrete differentiators from the About text. If you don't have concrete differentiators, keep this section short and honest rather than making claims up.`;
+
+  const pricingSection = profile.pricingInfo
+    ? `- Pricing: give pricing a short section using exactly this: "${profile.pricingInfo}". Frame it plainly.`
+    : `- Pricing: SKIP this section (no pricing was provided; do not invent prices).`;
+
+  const guaranteeSection = profile.guarantee
+    ? `- Guarantee: give this its OWN clearly-headed section and explain it properly (what qualifies, how it's measured, the time period): "${profile.guarantee}".`
+    : `- Guarantee: SKIP (none provided; do not invent one).`;
+
+  const industriesLine = profile.industries.length
+    ? `Where natural, mention the industries served (${profile.industries.join(", ")}) — this adds real relevance.`
+    : "";
+
+  return `Write a conversion-focused, locally-relevant service page for "${service}" targeting ${loc} (${profile.country || "United States"}).
 ${langBlock}
 BUSINESS
 - Name: ${profile.name}
 - Website: ${profile.website}
 - Phone: ${profile.phone}
 - Industry: ${profile.industry}
-- Location: ${loc}
-- About: ${profile.description}
-- Service areas / neighborhoods: ${profile.serviceAreas.join(", ") || "(none provided)"}
+- Serving: ${loc}
+- About / positioning: ${profile.description}
 - Priority keywords to work in naturally (do not stuff): ${profile.keywords.join(", ") || "(none)"}
-
+${industriesLine ? "- " + industriesLine + "\n" : ""}
 TONE: ${TONE_GUIDE[profile.tone]}
-
 OPENING: ${p.archetype}
 ${avoidBlock}
-=== LENGTH IS A HARD REQUIREMENT ===
-The finished page body MUST be AT LEAST 1,500 words, and should be 1,700-2,200 words.
-This is not a suggestion. Short pages are rejected automatically. Write full,
-substantive paragraphs, not summaries. Do NOT stop early. If you find yourself
-running short, add more genuinely useful, specific detail (real local context,
-concrete examples, step-by-step explanation, more FAQ entries). Refer to the
-location as "${loc}" throughout.
+=== WHAT MAKES THIS PAGE GOOD (read carefully) ===
+This page must be written for a buyer choosing who to hire, and it must have a
+real reason to exist for ${loc} specifically. It is one of many city pages, so
+about 60-70% can be solid core service content, but 30-40% must be genuinely
+specific: real local business context, real proof, and city-appropriate detail.
 
-REQUIRED SECTIONS (each must meet its minimum word count):
-1. Intro / hook (at least 120 words) - unique local angle for ${loc}.
-2. What "${service}" involves (at least 300 words) - explain it thoroughly and plainly.
-3. Why it matters specifically in ${loc} (at least 250 words) - local climate, common
-   local problems, local conditions. Must be genuinely specific to ${loc}, not generic.
-4. Common problems / signs you need this service (at least 220 words) - concrete,
-   with a bulleted list plus explanation around it.
-5. Our process, step by step (at least 250 words) - what the customer can expect.
-6. Why choose ${profile.name} (at least 180 words) - credentials, differentiators, trust.
-7. Service areas / neighborhoods we cover (at least 130 words) - reference real nearby areas.
-8. FAQ - 7 to 9 real questions with genuinely helpful answers (at least 450 words total),
-   several specific to ${loc}.
-9. Short closing with a clear call to action and the phone number (at least 60 words).
+DO NOT DO THESE (they are the classic AI/doorway giveaways and will be rejected):
+- NO city-culture filler: no weather, history, "heart of", "vibrant/thriving
+  community", tourism copy, or anything a tourism board would write. Local
+  relevance means real business/market context and real nearby areas, NOT this.
+- NO fabricated proof: no invented testimonials, client names, ratings, awards,
+  years in business, or specific result numbers.
+- NO fabricated location. ${locationRule}
+- NO padding. Write as long as the content genuinely warrants (roughly
+  1,000-1,600 words). Cut anything that doesn't help the reader decide.
+
+PAGE STRUCTURE (use clear H2/H3 headings; skip any section marked SKIP):
+1. Hook / hero intro: the reader's problem and the business outcome (leads,
+   calls, customers), plus a clear call to action with the phone number.
+2. "${service}" services: what you actually deliver. ${deliverablesRule}
+3. Recent Work & Results (proof). ${proofRule}
+4. Why choose ${profile.name}. ${differentiatorsRule}
+5. Our process, step by step (consultation -> ... -> launch -> support). Concrete.
+${pricingSection}
+${guaranteeSection}
+6. Areas we serve around ${city}: name 4-6 REAL, well-known towns/suburbs
+   adjacent to ${city} in ${profile.state || profile.country}. Only real ones.
+   Weave them into natural sentences; do NOT dump an unnatural block of city
+   names (that is keyword stuffing).${profile.serviceAreas.length ? ` Prefer these if relevant: ${profile.serviceAreas.join(", ")}.` : ""}
+7. FAQ: 6-8 purchase-intent questions with genuinely helpful answers. Include
+   commercial ones like cost, redesigning/replacing an existing setup, work for
+   ads/landing pages, and what happens after launch. Some should be ${city}-specific.
+8. Final call to action with the phone number.
 
 HARD WRITING RULES (checked automatically; violations fail the page):
-- NEVER use em dashes (—), en dashes used as breaks (–), or "--". Use commas and periods.
-- NEVER use any of these AI-tell words or phrases: ${banned}.
-- Keep it readable: mostly short sentences, short paragraphs, plain words, active voice,
-  direct address ("we fix", "you get"). Being readable and being long are both required.
-- Make it genuinely unique to ${loc}. It must not read identically for another city with
-  the name swapped.
-- Use descriptive H2/H3 subheadings and some bullet lists so it is scannable.
+- NEVER use em dashes (—), en dashes as breaks (–), or "--". Use commas and periods.
+- NEVER use any of these words/phrases: ${banned}.
+- Short sentences, short paragraphs, plain words, active voice, direct address.
+- Must not read identically for another city with the name swapped.
 
-INTERNAL LINKS: weave these in naturally as HTML anchors in the body where they fit
-(do not dump them in a list). Use the full URLs exactly as given:
+INTERNAL LINKS: weave these in naturally as HTML anchors where they fit (use the
+full URLs exactly as given, do not dump them in a list):
 ${linkList}
 ${feedbackBlock}
 Return ONLY a JSON object (no markdown, no code fences) with exactly these fields:
 {
-  "title": "SEO title tag, under 60 chars, includes ${service} and ${city}",
+  "title": "SEO title, under 60 chars, lead with ${service} + ${city}, then a short outcome. Example style: '${service} ${city}${profile.state ? ", " + abbrev(profile.state) : ""} | <short outcome>'",
   "metaDescription": "meta description, 140-160 chars, compelling, includes ${city}",
-  "h1": "the page H1 heading",
-  "html": "the full page body as clean semantic HTML using <h2>,<h3>,<p>,<ul>,<li>,<a>. Do NOT include <html>,<head>,<body>, the H1, or the schema. Include the internal-link anchors inline. This must be the full 1,500+ word body.",
+  "h1": "H1 that leads with the service and location, then the outcome. Example style: '${service} ${city}${profile.state ? ", " + abbrev(profile.state) : ""} | <short benefit>'",
+  "html": "the full page body as clean semantic HTML using <h2>,<h3>,<p>,<ul>,<li>,<a>. Do NOT include <html>,<head>,<body>, the H1, or the schema.",
   "faqs": [{"question": "...", "answer": "..."}]
 }`;
+}
+
+// Rough US/CA/AU state abbreviation for titles ("Texas" -> "TX"). Falls back to
+// the full name if unknown.
+const ABBREV: Record<string, string> = {
+  Alabama: "AL", Alaska: "AK", Arizona: "AZ", Arkansas: "AR", California: "CA",
+  Colorado: "CO", Connecticut: "CT", Delaware: "DE", "District of Columbia": "DC",
+  Florida: "FL", Georgia: "GA", Hawaii: "HI", Idaho: "ID", Illinois: "IL",
+  Indiana: "IN", Iowa: "IA", Kansas: "KS", Kentucky: "KY", Louisiana: "LA",
+  Maine: "ME", Maryland: "MD", Massachusetts: "MA", Michigan: "MI",
+  Minnesota: "MN", Mississippi: "MS", Missouri: "MO", Montana: "MT",
+  Nebraska: "NE", Nevada: "NV", "New Hampshire": "NH", "New Jersey": "NJ",
+  "New Mexico": "NM", "New York": "NY", "North Carolina": "NC",
+  "North Dakota": "ND", Ohio: "OH", Oklahoma: "OK", Oregon: "OR",
+  Pennsylvania: "PA", "Rhode Island": "RI", "South Carolina": "SC",
+  "South Dakota": "SD", Tennessee: "TN", Texas: "TX", Utah: "UT",
+  Vermont: "VT", Virginia: "VA", Washington: "WA", "West Virginia": "WV",
+  Wisconsin: "WI", Wyoming: "WY",
+};
+function abbrev(state: string): string {
+  return ABBREV[state] || state;
 }

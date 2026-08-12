@@ -74,11 +74,18 @@ function NewClientForm({ onCreated }: { onCreated: () => void }) {
     keywords: "",
     serviceAreas: "",
     urlPattern: "/services/{service}/{city}/",
+    servesRemotely: true,
+    pricingInfo: "",
+    guarantee: "",
+    deliverables: "",
+    differentiators: "",
+    industries: "",
+    proofPoints: "",
   });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState("");
 
-  function set(k: string, v: string) {
+  function set(k: string, v: string | boolean) {
     setF((prev) => ({ ...prev, [k]: v }));
   }
 
@@ -95,6 +102,10 @@ function NewClientForm({ onCreated }: { onCreated: () => void }) {
         cities: splitLines(f.cities),
         keywords: splitLines(f.keywords),
         serviceAreas: splitLines(f.serviceAreas),
+        deliverables: splitLines(f.deliverables),
+        differentiators: splitLines(f.differentiators),
+        industries: splitLines(f.industries),
+        proofPoints: splitLines(f.proofPoints),
       }),
     });
     setSaving(false);
@@ -198,6 +209,46 @@ function NewClientForm({ onCreated }: { onCreated: () => void }) {
         <div>
           <label>Service areas / neighborhoods (one per line)</label>
           <textarea value={f.serviceAreas} onChange={(e) => set("serviceAreas", e.target.value)} />
+        </div>
+      </div>
+
+      <h3 style={{ marginTop: 18 }}>Positioning & proof</h3>
+      <p className="muted small" style={{ marginTop: 0 }}>
+        This is what makes each city page unique and trustworthy instead of generic. Anything you
+        leave blank is simply left out — the generator never invents proof, prices, or a location.
+      </p>
+      <label className="checkline">
+        <input
+          type="checkbox"
+          checked={f.servesRemotely}
+          onChange={(e) => set("servesRemotely", e.target.checked)}
+        />
+        <span>Serves target cities remotely (no physical office in each city)</span>
+      </label>
+      <div className="grid2">
+        <div>
+          <label>Pricing (optional, e.g. "Starting at $2,500")</label>
+          <input value={f.pricingInfo} onChange={(e) => set("pricingInfo", e.target.value)} />
+        </div>
+        <div>
+          <label>Guarantee (optional, e.g. "5X ROI in 12 months or money back")</label>
+          <input value={f.guarantee} onChange={(e) => set("guarantee", e.target.value)} />
+        </div>
+        <div>
+          <label>What every project includes (one per line)</label>
+          <textarea value={f.deliverables} onChange={(e) => set("deliverables", e.target.value)} placeholder={"Custom design\nMobile optimization\nGA4 + Search Console\nPage speed optimization"} />
+        </div>
+        <div>
+          <label>Real differentiators (one per line)</label>
+          <textarea value={f.differentiators} onChange={(e) => set("differentiators", e.target.value)} />
+        </div>
+        <div>
+          <label>Industries served (one per line)</label>
+          <textarea value={f.industries} onChange={(e) => set("industries", e.target.value)} />
+        </div>
+        <div>
+          <label>Proof points — real results / testimonials (one per line)</label>
+          <textarea value={f.proofPoints} onChange={(e) => set("proofPoints", e.target.value)} placeholder={"Leave blank if none — a placeholder for the team is inserted instead of fake proof."} />
         </div>
       </div>
 

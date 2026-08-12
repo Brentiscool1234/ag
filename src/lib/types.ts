@@ -54,6 +54,18 @@ export interface ClientProfile {
   serviceAreas: string[]; // neighborhoods / nearby areas for local specificity
   bannedWordsExtra: string[]; // per-client additions to the global banned list
   urlPattern: string; // e.g. "/services/{service}/{city}/"
+
+  // Positioning & proof. These make each page unique and trustworthy instead of
+  // generic. Provided data is used; missing data is omitted or placeholdered,
+  // NEVER fabricated.
+  servesRemotely: boolean; // true = serves the city remotely (no physical office there)
+  pricingInfo: string; // e.g. "Starting at $2,500" — drives a Pricing section if set
+  guarantee: string; // e.g. "5X ROI or money back in 12 months" — its own explained section
+  deliverables: string[]; // concrete things every project includes (tangible, not buzzwords)
+  differentiators: string[]; // real reasons to choose this business
+  industries: string[]; // industries served (adds real relevance/uniqueness)
+  proofPoints: string[]; // real results / testimonials / case studies (never invented)
+
   createdAt: number;
   updatedAt: number;
 }

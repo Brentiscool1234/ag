@@ -24,6 +24,13 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
     serviceAreas: clean(body.serviceAreas ?? existing.serviceAreas),
     bannedWordsExtra: clean(body.bannedWordsExtra ?? existing.bannedWordsExtra),
     urlPattern: body.urlPattern || existing.urlPattern,
+    servesRemotely: body.servesRemotely ?? existing.servesRemotely ?? true,
+    pricingInfo: body.pricingInfo ?? existing.pricingInfo ?? "",
+    guarantee: body.guarantee ?? existing.guarantee ?? "",
+    deliverables: clean(body.deliverables ?? existing.deliverables),
+    differentiators: clean(body.differentiators ?? existing.differentiators),
+    industries: clean(body.industries ?? existing.industries),
+    proofPoints: clean(body.proofPoints ?? existing.proofPoints),
     createdAt: existing.createdAt,
     updatedAt: Date.now(),
   };

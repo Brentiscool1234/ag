@@ -104,8 +104,10 @@ test("evaluatePage fails a short page with an em dash and banned word", () => {
   const html = "<p>We unleash roofing — the best around.</p>";
   const res = evaluatePage(html);
   assert.equal(res.ok, false);
-  assert.ok(res.hardFailures.some((f) => f.includes("word")));
-  assert.ok(res.hardFailures.some((f) => f.toLowerCase().includes("min")));
+  // banned word ("unleash") failure
+  assert.ok(res.hardFailures.some((f) => f.toLowerCase().includes("ai-tell")));
+  // thin/short page failure
+  assert.ok(res.hardFailures.some((f) => f.toLowerCase().includes("thin")));
 });
 test("stripHtml removes tags", () => {
   assert.equal(stripHtml("<h2>Hi</h2><p>There</p>"), "Hi There");
