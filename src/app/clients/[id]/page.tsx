@@ -219,6 +219,8 @@ export default function ClientPage({ params }: { params: { id: string } }) {
                   </td>
                   <td>
                     <a className="small" href={`/api/pages/${p.id}?format=html`}>HTML</a>
+                    {" · "}
+                    <a className="small" href={`/api/pages/${p.id}?format=schema`}>Schema</a>
                   </td>
                 </tr>
               ))}

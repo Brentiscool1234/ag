@@ -45,7 +45,8 @@ Deterministic gates are unit-tested — run `npm test`.
   server. Kick it off, close the tab, come back later. A **progress bar with a
   live ETA** (refined as pages complete) shows how long is left.
 - **Exports** — per-page ready-to-publish HTML (title + meta + schema + body),
-  a `urls.txt` build plan, and a `sitemap.xml`.
+  per-page **JSON-LD schema** as a downloadable `.jsonld` file, a `urls.txt`
+  build plan, and a `sitemap.xml`.
 
 ## Architecture
 
