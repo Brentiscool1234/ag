@@ -161,6 +161,42 @@ Return ONLY a JSON object (no markdown, no code fences) with exactly these field
 }`;
 }
 
+// Expansion pass: feed the current (too-short) draft back and ask the model to
+// build ON it and make it fuller. Terse models (e.g. gpt-4o in JSON mode)
+// lengthen far more reliably by expanding an existing draft than by
+// regenerating from scratch.
+export function buildExpandPrompt(
+  p: GenParams,
+  current: { title: string; metaDescription: string; h1: string; html: string; faqs: { question: string; answer: string }[] },
+  wordCount: number,
+  fixes: string[],
+): string {
+  const loc = locationLabel(p.city, p.profile.state);
+  const banned = [...GLOBAL_BANNED_WORDS, ...p.profile.bannedWordsExtra].join(", ");
+  const fixBlock = fixes.length
+    ? `\nAlso fix these problems from the current draft:\n${fixes.map((f) => `- ${f}`).join("\n")}\n`
+    : "";
+
+  return `Below is a DRAFT service page for "${p.service}" in ${loc}. It is too short at ${wordCount} words and reads thin.
+
+Your job: rewrite it LONGER and more complete, aiming for 1,200-1,600 words. Keep every good, specific sentence that is already there. Do NOT start over or drop content. Make it fuller by:
+- Expanding each existing section with more concrete, useful, buyer-focused detail.
+- Adding any missing sections: concrete deliverables, a proof/results block, why choose us, a step-by-step process, "areas we serve" with 4-6 REAL towns near ${p.city}, and a solid FAQ of 6-8 purchase-intent questions.
+- Making answers and explanations thorough rather than one-liners.
+
+Keep ALL of these rules (they are checked automatically):
+- No em dashes (—), en dashes as breaks (–), or "--".
+- Never use these words/phrases: ${banned}.
+- No city-culture filler (weather, history, "vibrant", tourism copy). No fabricated testimonials, numbers, or physical location.
+- Short sentences, plain words, active voice. Must not read identically for another city.
+${fixBlock}
+CURRENT DRAFT (title: ${current.title}):
+${current.html}
+
+Return ONLY a JSON object with the same fields as before:
+{"title": "...", "metaDescription": "...", "h1": "...", "html": "the full EXPANDED body, 1,200+ words", "faqs": [{"question":"...","answer":"..."}]}`;
+}
+
 // Rough US/CA/AU state abbreviation for titles ("Texas" -> "TX"). Falls back to
 // the full name if unknown.
 const ABBREV: Record<string, string> = {

@@ -250,13 +250,14 @@ export function evaluatePage(
     hardFailures.push(`Remove these AI-tell words entirely: ${uniq.join(", ")}.`);
   }
 
+  // Readability is a WARNING, not a hard gate: we don't want to trap a
+  // long, useful, unique page in an endless regen just because a technical
+  // topic reads a little dense. The prompt still pushes short sentences.
   const reading = readability(text);
-  if (!opts.skipReadability && reading.fleschReadingEase < GATES.minReadingEase)
-    hardFailures.push(
-      `Reading ease ${reading.fleschReadingEase} (min ${GATES.minReadingEase}); use shorter sentences and simpler words.`,
+  if (!opts.skipReadability && reading.fleschReadingEase < GATES.idealReadingEase)
+    warnings.push(
+      `Reading ease ${reading.fleschReadingEase} (aim for ${GATES.idealReadingEase}+); shorter sentences would help.`,
     );
-  else if (!opts.skipReadability && reading.fleschReadingEase < GATES.idealReadingEase)
-    warnings.push(`Reading ease ${reading.fleschReadingEase} (ideal ${GATES.idealReadingEase}+).`);
 
   const myOpening = openingFingerprint(html);
   for (const sib of opts.siblingOpenings ?? []) {

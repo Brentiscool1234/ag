@@ -1,5 +1,5 @@
 import type { Account, ClientProfile, Page } from "./types";
-import { generateRawPage } from "./providers";
+import { expandRawPage, generateRawPage, type RawPage } from "./providers";
 import { OPENING_ARCHETYPES } from "./prompt";
 import { buildInternalLinks, predictUrl } from "./links";
 import { buildSchemaJsonLd } from "./schema";
@@ -9,10 +9,11 @@ import {
   sanitizeEmDashes,
   readability,
   stripHtml,
+  words,
 } from "./validators";
 import { randomUUID } from "crypto";
 
-const MAX_ATTEMPTS = 3;
+const MAX_ATTEMPTS = 4;
 
 export interface GenerateContext {
   // Openings + bodies of pages already generated for this client, so each new
@@ -32,55 +33,67 @@ export async function generatePage(
 ): Promise<Page> {
   const slug = predictUrl(profile.urlPattern, service, city);
   const internalLinks = buildInternalLinks(profile, service, city);
-  const validationNotes: string[] = [];
+  const english = (profile.language || "English").toLowerCase().startsWith("en");
+  const params = {
+    profile,
+    service,
+    city,
+    internalLinks,
+    archetype: OPENING_ARCHETYPES[0],
+    siblingOpenings: ctx.siblingOpenings,
+  };
 
-  let feedback: string[] = [];
-  let lastRaw: Awaited<ReturnType<typeof generateRawPage>> | null = null;
-
-  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
-    // Rotate the opening archetype each attempt so a regen genuinely differs.
-    const archetype = OPENING_ARCHETYPES[(attempt - 1) % OPENING_ARCHETYPES.length];
-
-    const raw = await generateRawPage(account, {
-      profile,
-      service,
-      city,
-      internalLinks,
-      archetype,
-      feedback: feedback.length ? feedback : undefined,
-      siblingOpenings: ctx.siblingOpenings,
-    });
-    lastRaw = raw;
-
-    // Deterministic safety net: strip any em dash the model slipped through.
-    raw.html = sanitizeEmDashes(raw.html);
-    raw.title = sanitizeEmDashes(raw.title);
-    raw.metaDescription = sanitizeEmDashes(raw.metaDescription);
-
-    const english = (profile.language || "English").toLowerCase().startsWith("en");
-    const result = evaluatePage(raw.html, {
+  const evaluate = (html: string) =>
+    evaluatePage(html, {
       bannedWordsExtra: profile.bannedWordsExtra,
       siblingOpenings: ctx.siblingOpenings,
       siblingBodies: ctx.siblingBodies,
       skipReadability: !english,
     });
 
+  const validationNotes: string[] = [];
+  let best: RawPage | null = null; // longest passing-ish draft, kept as fallback
+  let bestWords = -1;
+  let raw: RawPage | null = null;
+  let lastFailures: string[] = [];
+
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    if (attempt === 1) {
+      raw = await generateRawPage(account, { ...params, archetype: OPENING_ARCHETYPES[0] });
+    } else {
+      // Every retry EXPANDS the running draft (fix issues + make it longer),
+      // rather than regenerating short from scratch.
+      const wc = words(stripHtml(raw!.html)).length;
+      raw = await expandRawPage(account, params, raw!, wc, lastFailures);
+    }
+
+    // Deterministic safety net: strip any em dash the model slipped through.
+    raw.html = sanitizeEmDashes(raw.html);
+    raw.title = sanitizeEmDashes(raw.title);
+    raw.metaDescription = sanitizeEmDashes(raw.metaDescription);
+
+    const result = evaluate(raw.html);
+    const wc = result.wordCount;
+
+    // Track the fullest draft as a fallback if we never fully pass.
+    if (wc > bestWords) {
+      best = raw;
+      bestWords = wc;
+    }
+
     if (result.ok) {
-      const page = assemblePage(profile, service, city, slug, raw, internalLinks, [
+      return assemblePage(profile, service, city, slug, raw, internalLinks, [
         ...validationNotes,
         ...result.warnings,
       ]);
-      return page;
     }
 
-    validationNotes.push(`Attempt ${attempt} failed: ${result.hardFailures.join(" ")}`);
-    feedback = result.hardFailures;
+    validationNotes.push(`Attempt ${attempt} (${wc} words): ${result.hardFailures.join(" ")}`);
+    lastFailures = result.hardFailures;
   }
 
-  // Exhausted attempts: ship the best-effort last draft, flagged as failed so
-  // the team can review it rather than silently publishing.
-  const raw = lastRaw!;
-  const page = assemblePage(profile, service, city, slug, raw, internalLinks, validationNotes);
+  // Exhausted attempts: ship the fullest draft, flagged so the team reviews it.
+  const page = assemblePage(profile, service, city, slug, best!, internalLinks, validationNotes);
   page.status = "failed";
   page.attempts = MAX_ATTEMPTS;
   return page;

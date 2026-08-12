@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
-import { SYSTEM_PROMPT, buildUserPrompt, type GenParams } from "./prompt";
+import { SYSTEM_PROMPT, buildUserPrompt, buildExpandPrompt, type GenParams } from "./prompt";
 import type { Account } from "./types";
 import { DEFAULT_ANTHROPIC_MODEL, DEFAULT_OPENAI_MODEL } from "./types";
 
@@ -29,11 +29,28 @@ function openaiKey(a: Account): string {
 // Both providers use the same prompt and return the same JSON shape, so the
 // validation gates downstream are provider-agnostic.
 export async function generateRawPage(account: Account, params: GenParams): Promise<RawPage> {
-  if (account.provider === "openai") return openaiGenerate(account, params);
-  return anthropicGenerate(account, params);
+  return runProvider(account, buildUserPrompt(params));
 }
 
-async function anthropicGenerate(account: Account, params: GenParams): Promise<RawPage> {
+// Expansion pass: rewrite a too-short draft longer and more complete. Feeding
+// the existing draft back is far more reliable at increasing length than
+// regenerating from scratch, especially with terse models.
+export async function expandRawPage(
+  account: Account,
+  params: GenParams,
+  current: RawPage,
+  wordCount: number,
+  fixes: string[],
+): Promise<RawPage> {
+  return runProvider(account, buildExpandPrompt(params, current, wordCount, fixes));
+}
+
+async function runProvider(account: Account, userPrompt: string): Promise<RawPage> {
+  if (account.provider === "openai") return openaiRun(account, userPrompt);
+  return anthropicRun(account, userPrompt);
+}
+
+async function anthropicRun(account: Account, userPrompt: string): Promise<RawPage> {
   const client = new Anthropic({ apiKey: anthropicKey(account) });
   const model = account.anthropicModel || DEFAULT_ANTHROPIC_MODEL;
 
@@ -41,11 +58,11 @@ async function anthropicGenerate(account: Account, params: GenParams): Promise<R
   // this SDK version; the body is valid and forwarded as-is at runtime.
   const requestParams = {
     model,
-    max_tokens: 12000, // headroom for a full 1,700-2,200 word page + HTML
+    max_tokens: 12000,
     thinking: { type: "adaptive" },
     output_config: { effort: "medium" },
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: buildUserPrompt(params) }],
+    messages: [{ role: "user", content: userPrompt }],
   } as unknown as Anthropic.MessageStreamParams;
 
   const message = await client.messages.stream(requestParams).finalMessage();
@@ -56,17 +73,17 @@ async function anthropicGenerate(account: Account, params: GenParams): Promise<R
   return parseRawPage(text);
 }
 
-async function openaiGenerate(account: Account, params: GenParams): Promise<RawPage> {
+async function openaiRun(account: Account, userPrompt: string): Promise<RawPage> {
   const client = new OpenAI({ apiKey: openaiKey(account) });
   const model = account.openaiModel || DEFAULT_OPENAI_MODEL;
 
   const completion = await client.chat.completions.create({
     model,
-    max_tokens: 8000, // headroom for a full 1,700-2,200 word page + HTML
+    max_tokens: 8000,
     response_format: { type: "json_object" },
     messages: [
       { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: buildUserPrompt(params) },
+      { role: "user", content: userPrompt },
     ],
   });
   const text = completion.choices[0]?.message?.content ?? "";
